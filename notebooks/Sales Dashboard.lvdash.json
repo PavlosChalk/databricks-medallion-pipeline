@@ -1,0 +1,706 @@
+{
+  "datasets": [
+    {
+      "name": "efd7ea43",
+      "displayName": "gold daily revenue records",
+      "queryLines": [
+        "SELECT * FROM workspace.gold.daily_sales"
+      ]
+    },
+    {
+      "name": "top_customers",
+      "displayName": "Top 10 Customers",
+      "config": {
+        "version": "1.1",
+        "source": "SELECT customer_id, country, lifetime_value FROM workspace.gold.customer_summary ORDER BY lifetime_value DESC LIMIT 10",
+        "dimensions": [
+          {
+            "name": "customer_id",
+            "expr": "customer_id",
+            "displayName": "Customer ID"
+          },
+          {
+            "name": "country",
+            "expr": "country",
+            "displayName": "Country"
+          },
+          {
+            "name": "lifetime_value",
+            "expr": "lifetime_value",
+            "displayName": "Lifetime Value",
+            "format": {
+              "type": "currency",
+              "currencyCode": "USD",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 2.0
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "event_funnel",
+      "displayName": "Event Funnel Stages",
+      "config": {
+        "source": "workspace.silver.events",
+        "measures": [
+          {
+            "name": "event_count",
+            "expr": "COUNT(*)",
+            "displayName": "Events",
+            "format": {
+              "type": "number",
+              "abbreviation": "compact"
+            }
+          }
+        ],
+        "version": "1.1",
+        "comment": "Funnel stage counts (views, carts, purchases) from silver events",
+        "dimensions": [
+          {
+            "name": "stage",
+            "expr": "CASE\n  WHEN event_type = 'page_view' THEN 'Views'\n  WHEN event_type = 'add_to_cart' THEN 'Carts'\n  WHEN event_type = 'purchase' THEN 'Purchases'\nEND",
+            "displayName": "Funnel Stage"
+          }
+        ]
+      }
+    },
+    {
+      "name": "daily_funnel",
+      "displayName": "Daily Funnel by Device",
+      "config": {
+        "source": "workspace.gold.daily_funnel",
+        "measures": [
+          {
+            "name": "views",
+            "expr": "SUM(views)",
+            "displayName": "Views",
+            "format": {
+              "type": "number",
+              "abbreviation": "compact"
+            }
+          },
+          {
+            "name": "carts",
+            "expr": "SUM(carts)",
+            "displayName": "Carts",
+            "format": {
+              "type": "number",
+              "abbreviation": "compact"
+            }
+          },
+          {
+            "name": "purchases",
+            "expr": "SUM(purchases)",
+            "displayName": "Purchases",
+            "format": {
+              "type": "number",
+              "abbreviation": "compact"
+            }
+          },
+          {
+            "name": "view_to_purchase_rate",
+            "expr": "SUM(purchases) / SUM(views)",
+            "displayName": "View-to-Purchase Rate",
+            "format": {
+              "type": "percentage",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 2.0
+              }
+            }
+          }
+        ],
+        "version": "1.1",
+        "comment": "Daily funnel metrics per device from the gold daily_funnel table",
+        "dimensions": [
+          {
+            "name": "event_date",
+            "expr": "event_date",
+            "displayName": "Date"
+          },
+          {
+            "name": "device_type",
+            "expr": "device_type",
+            "displayName": "Device"
+          }
+        ]
+      }
+    },
+    {
+      "name": "top_products",
+      "displayName": "Top 10 Products by Views",
+      "config": {
+        "source": "SELECT e.product_id, p.product_name, COUNT(*) AS views FROM workspace.silver.events e LEFT JOIN workspace.silver.products p\n  ON e.product_id = p.product_id\nWHERE e.event_type = 'page_view' AND e.product_id IS NOT NULL GROUP BY e.product_id, p.product_name ORDER BY views DESC LIMIT 10",
+        "measures": [
+          {
+            "name": "views",
+            "expr": "SUM(views)",
+            "displayName": "Views",
+            "format": {
+              "type": "number",
+              "abbreviation": "compact"
+            }
+          }
+        ],
+        "version": "1.1",
+        "comment": "Top 10 products ranked by page views, with product names from the products dimension",
+        "dimensions": [
+          {
+            "name": "product_id",
+            "expr": "product_id",
+            "displayName": "Product"
+          },
+          {
+            "name": "product_name",
+            "expr": "product_name",
+            "displayName": "Product Name"
+          }
+        ]
+      }
+    },
+    {
+      "name": "category_revenue",
+      "displayName": "Revenue by Category",
+      "config": {
+        "version": "1.1",
+        "source": "workspace.gold.product_performance",
+        "dimensions": [
+          {
+            "name": "category",
+            "expr": "category",
+            "displayName": "Category",
+            "comment": "Product category"
+          }
+        ],
+        "measures": [
+          {
+            "displayName": "Revenue",
+            "format": {
+              "type": "currency",
+              "currencyCode": "USD",
+              "decimalPlaces": {
+                "type": "exact",
+                "places": 2.0
+              }
+            },
+            "name": "revenue",
+            "expr": "SUM(revenue)",
+            "comment": "Total revenue by category"
+          }
+        ]
+      }
+    }
+  ],
+  "pages": [
+    {
+      "name": "84151939",
+      "displayName": "Sales Overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "total_revenue_counter",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "efd7ea43",
+                  "fields": [
+                    {
+                      "name": "sum(revenue)",
+                      "expression": "SUM(`revenue`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Total Revenue",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(revenue)",
+                  "format": {
+                    "abbreviation": "compact",
+                    "currencyCode": "USD",
+                    "decimalPlaces": {
+                      "places": 2,
+                      "type": "exact"
+                    },
+                    "type": "number-currency"
+                  },
+                  "displayName": "Total Revenue"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 4,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "revenue_by_date_line",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "efd7ea43",
+                  "fields": [
+                    {
+                      "name": "order_date",
+                      "expression": "`order_date`"
+                    },
+                    {
+                      "name": "sum(revenue)",
+                      "expression": "SUM(`revenue`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Revenue by Order Date"
+              },
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "order_date",
+                  "displayName": "Order Date",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(revenue)",
+                  "displayName": "Revenue",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 0,
+            "width": 8,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "top_customers_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "top_customers",
+                  "fields": [
+                    {
+                      "name": "customer_id",
+                      "expression": "`customer_id`"
+                    },
+                    {
+                      "name": "country",
+                      "expression": "`country`"
+                    },
+                    {
+                      "name": "lifetime_value",
+                      "expression": "`lifetime_value`"
+                    }
+                  ],
+                  "disaggregated": true,
+                  "orders": [
+                    {
+                      "direction": "DESC",
+                      "expression": "`lifetime_value`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Top 10 Customers by Lifetime Value"
+              },
+              "rowsPerPage": 10,
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "customer_id",
+                    "displayName": "Customer"
+                  },
+                  {
+                    "fieldName": "country",
+                    "displayName": "Country"
+                  },
+                  {
+                    "fieldName": "lifetime_value",
+                    "contentAlignment": "right",
+                    "format": {
+                      "abbreviation": "none",
+                      "currencyCode": "USD",
+                      "decimalPlaces": {
+                        "places": 2,
+                        "type": "exact"
+                      },
+                      "type": "number-currency"
+                    },
+                    "headerAlignment": "right",
+                    "displayName": "Lifetime Value"
+                  }
+                ],
+                "rowOrder": [
+                  {
+                    "by": "column-reversed",
+                    "field": {
+                      "index": 2
+                    }
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 12,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "revenue_by_category_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "category_revenue",
+                  "fields": [
+                    {
+                      "name": "category",
+                      "expression": "`category`"
+                    },
+                    {
+                      "name": "measure(revenue)",
+                      "expression": "MEASURE(`revenue`)"
+                    }
+                  ],
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "DESC",
+                      "expression": "MEASURE(`revenue`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "Revenue by Category"
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "category",
+                  "displayName": "Category",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "measure-reversed",
+                      "measure": {
+                        "fieldName": "measure(revenue)"
+                      }
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(revenue)",
+                  "displayName": "Revenue",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 4,
+            "height": 3
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "9084d961",
+      "displayName": "Events Funnel",
+      "layout": [
+        {
+          "widget": {
+            "name": "event_funnel_bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "event_funnel",
+                  "fields": [
+                    {
+                      "name": "stage",
+                      "expression": "`stage`"
+                    },
+                    {
+                      "name": "measure(event_count)",
+                      "expression": "MEASURE(`event_count`)"
+                    }
+                  ],
+                  "disaggregated": false,
+                  "orders": [
+                    {
+                      "direction": "DESC",
+                      "expression": "MEASURE(`event_count`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Conversion Funnel",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "stage",
+                  "displayName": "Funnel Stage",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "measure-reversed",
+                      "measure": {
+                        "fieldName": "measure(event_count)"
+                      }
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(event_count)",
+                  "displayName": "Events",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "stage",
+                  "displayName": "stage",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 4,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "view_to_purchase_rate_line",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "daily_funnel",
+                  "fields": [
+                    {
+                      "name": "device_type",
+                      "expression": "`device_type`"
+                    },
+                    {
+                      "name": "event_date",
+                      "expression": "`event_date`"
+                    },
+                    {
+                      "name": "measure(view_to_purchase_rate)",
+                      "expression": "MEASURE(`view_to_purchase_rate`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": "View-to-Purchase Rate by Day and Device"
+              },
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "event_date",
+                  "displayName": "event_date",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "measure(view_to_purchase_rate)",
+                  "displayName": "view_to_purchase_rate",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "device_type",
+                  "displayName": "device_type",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 0,
+            "width": 8,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "top_products_table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "top_products",
+                  "fields": [
+                    {
+                      "name": "product_id",
+                      "expression": "`product_id`"
+                    },
+                    {
+                      "name": "product_name",
+                      "expression": "`product_name`"
+                    },
+                    {
+                      "name": "measure(views)",
+                      "expression": "MEASURE(`views`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "title": {
+                  "value": "Top 10 Products by Views",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "product_id",
+                    "displayName": "Product ID"
+                  },
+                  {
+                    "fieldName": "product_name",
+                    "displayName": "Product Name"
+                  },
+                  {
+                    "fieldName": "measure(views)",
+                    "contentAlignment": "right",
+                    "format": {
+                      "abbreviation": "none",
+                      "type": "number-plain"
+                    },
+                    "headerAlignment": "right",
+                    "displayName": "Views"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 12,
+            "height": 5
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}
